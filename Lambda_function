@@ -1,0 +1,30 @@
+import boto3
+import logging
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
+ec2 = boto3.client('ec2')
+sns = boto3.client('sns')
+
+INSTANCE_ID = 'i-02d95a180ff25f34f'
+SNS_TOPIC_ARN = 'arn:aws:sns:us-east-2:303469101774:SumoQuery'
+
+def lambda_handler(event, context):
+    logger.info("Received event: %s", event)
+
+    try:
+        ec2.reboot_instances(InstanceIds=[INSTANCE_ID])
+        logger.info("Restarted EC2 instance: %s", INSTANCE_ID)
+
+        response = sns.publish(
+            TopicArn=SNS_TOPIC_ARN,
+            Message=f"EC2 instance {INSTANCE_ID} has been restarted.",
+            Subject="EC2 Instance Restarted"
+        )
+        logger.info("SNS publish response: %s", response)
+
+        return {"statusCode": 200, "body": "Reboot requested and SNS sent"}
+    except Exception as e:
+        logger.exception("Error during remediation")
+        return {"statusCode": 500, "body": str(e)}
